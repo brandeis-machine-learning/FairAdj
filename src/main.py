@@ -1,7 +1,6 @@
 # @Author  : Peizhao Li
 # @Contact : peizhaoli05@gmail.com
 
-
 import scipy.sparse as sp
 
 import torch
@@ -10,7 +9,7 @@ import torch.nn.functional as F
 
 from args import parse_args
 from utils import fix_seed, find_link
-from dataloader import cora
+from dataloader import get_dataset
 from model.utils import preprocess_graph, project
 from model.optimizer import loss_function
 from model.gae import GCNModelVAE
@@ -19,7 +18,9 @@ from eval import fair_link_eval
 
 def main(args):
     # Data preparation
-    G, adj, features, sensitive, test_edges_true, test_edges_false, _ = cora()
+    G, adj, features, sensitive, test_edges_true, test_edges_false = get_dataset(args.dataset, args.scale,
+                                                                                 args.test_ratio)
+
     n_nodes, feat_dim = features.shape
     features = torch.from_numpy(features).float().to(args.device)
     sensitive_save = sensitive.copy()
@@ -52,7 +53,7 @@ def main(args):
             cur_loss = loss.item()
             optimizer.step()
 
-            print("Epoch in T1: {:d};".format(epoch + 1), "Loss: {:.3f};".format(cur_loss))
+            print("Epoch in T1: [{:d}/{:d}];".format((epoch + 1), args.T1), "Loss: {:.3f};".format(cur_loss))
 
         for epoch in range(args.T2):
             adj_norm = adj_norm.requires_grad_(True)
@@ -69,7 +70,7 @@ def main(args):
             loss.backward()
             cur_loss = loss.item()
 
-            print("Epoch in T2: {:d};".format(epoch + 1), "Loss: {:.5f};".format(cur_loss))
+            print("Epoch in T2: [{:d}/{:d}];".format(epoch + 1, args.T2), "Loss: {:.5f};".format(cur_loss))
 
             adj_norm = adj_norm.add(adj_norm.grad.mul(-args.eta)).detach()
             adj_norm = adj_norm.to_dense()

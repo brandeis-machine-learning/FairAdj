@@ -39,10 +39,25 @@ Please check or adjust the environment configurations in `req.txt` for PyTorch s
 
 ## Experiment
 
-Run an experiment on CORA dataset
-
+Data for Cora and Citeseer are stored in `./data`.  
+Execute python file in `./src`:
+    
     cd src
-    python main.py
+
+Experiments on FairAdj:
+
+    python main.py --dataset "cora" --device "cuda:0" --eta 0.2 --T2 20
+    python main.py --dataset "citeseer" --device "cuda:0" --eta 5. --T2 20
+
+You can set `T2` to various values, see Figure 1 and 6 in our paper for more results.
+
+Experiments on Adversarial Graph Embedding:
+
+    python adv.py --dataset "cora" --device "cuda:0" --lr 0.001 --alpha 10.
+    python adv.py --dataset "citeseer" --device "cuda:0" --lr 0.001 --alpha 10.
+
+Similarly, `alpha` can be set to various values, see Figure 1 and 6 in our paper for more results.
+
 
 ## Results
 

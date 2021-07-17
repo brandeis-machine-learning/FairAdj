@@ -1,7 +1,10 @@
 # @Author  : Peizhao Li
 # @Contact : peizhaoli05@gmail.com
 
+import os
 import numpy as np
+import pickle as pkl
+import scipy.sparse as sp
 from collections import Counter
 import networkx as nx
 from sklearn.preprocessing import StandardScaler
@@ -20,6 +23,13 @@ cora_label = {
 
 def get_key(dict, value):
     return [k for k, v in dict.items() if v == value][0]
+
+
+def parse_index_file(filename):
+    index = []
+    for line in open(filename):
+        index.append(int(line.strip()))
+    return index
 
 
 def cora(feat_path="../data/cora/cora.content", edge_path="../data/cora/cora.cites", scale=True,
@@ -42,6 +52,48 @@ def cora(feat_path="../data/cora/cora.content", edge_path="../data/cora/cora.cit
     for edge in G.edges():
         G[edge[0]][edge[1]]['weight'] = 1
     adj = nx.adjacency_matrix(G, nodelist=sorted(G.nodes()))
+
+    return G, adj, X, sensitive, test_edges_true, test_edges_false, nodelist
+
+
+def citeseer(data_dir="../data/citeseer", scale=True, test_ratio=0.1) -> Tuple:
+    names = ['x', 'y', 'tx', 'ty', 'allx', 'ally', 'graph']
+    objects = []
+
+    for i in range(len(names)):
+        with open(os.path.join(data_dir, "ind.citeseer.{}".format(names[i])), 'rb') as rf:
+            u = pkl._Unpickler(rf)
+            u.encoding = 'latin1'
+            cur_data = u.load()
+            objects.append(cur_data)
+
+    x, y, tx, ty, allx, ally, graph = tuple(objects)
+    X = sp.vstack((allx, tx)).toarray()
+    sensitive = sp.vstack((ally, ty))
+    sensitive = np.where(sensitive.toarray() == 1)[1]
+
+    G = nx.from_dict_of_lists(graph)
+    test_idx_reorder = parse_index_file(os.path.join(data_dir, "ind.citeseer.test.index"))
+    test_idx_range = np.sort(test_idx_reorder)
+
+    missing_idx = set(range(min(test_idx_range), max(test_idx_range) + 1)) - set(test_idx_range)
+    for idx in missing_idx:
+        G.remove_node(idx)
+
+    if scale:
+        scaler = StandardScaler()
+        scaler.fit(X)
+        X = scaler.transform(X)
+
+    nodes = sorted(G.nodes())
+    nodelist = {idx: node for idx, node in zip(range(G.number_of_nodes()), list(nodes))}
+
+    G, test_edges_true, test_edges_false = build_test(G, nodelist, test_ratio)
+
+    for edge in G.edges():
+        G[edge[0]][edge[1]]['weight'] = 1
+
+    adj = nx.adjacency_matrix(G, nodelist=nodes)
 
     return G, adj, X, sensitive, test_edges_true, test_edges_false, nodelist
 
@@ -87,7 +139,7 @@ def build_test(G: nx.Graph, nodelist: Dict, ratio: float) -> Tuple:
     return G, test_edges_true, test_edges_false
 
 
-def analyze(G: nx.Graph, sensitive: np.ndarray) -> None:
+def analyse(G: nx.Graph, sensitive: np.ndarray) -> None:
     """ Show the base link rate on different sensitive attributes """
 
     mapping = {node: att for node, att in zip(sorted(G.nodes), sensitive)}
@@ -116,6 +168,17 @@ def analyze(G: nx.Graph, sensitive: np.ndarray) -> None:
     return
 
 
+def get_dataset(dataset: str, scale: bool, test_ratio: float) -> Tuple:
+    if dataset == "cora":
+        G, adj, features, sensitive, test_edges_true, test_edges_false, _ = cora(scale=scale, test_ratio=test_ratio)
+    elif dataset == "citeseer":
+        G, adj, features, sensitive, test_edges_true, test_edges_false, _ = citeseer(scale=scale, test_ratio=test_ratio)
+    else:
+        raise NotImplementedError
+
+    return G, adj, features, sensitive, test_edges_true, test_edges_false
+
+
 if __name__ == "__main__":
     G, adj, X, sensitive, test_edges_true, test_edges_false, nodelist = cora()
-    analyze(G, sensitive)
+    analyse(G, sensitive)

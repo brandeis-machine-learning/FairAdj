@@ -5,11 +5,13 @@ import argparse
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Fair Adjacency Graph Embedding")
+    parser = argparse.ArgumentParser(description="Fair Adjacency Graph Embedding for Link Prediction")
 
     # experiment
     parser.add_argument('--seed', type=int, default=1, help="seed")
     parser.add_argument('--device', type=str, default="cuda:0")
+    parser.add_argument('--dataset', type=str, default="cora")
+    parser.add_argument('--scale', action="store_false", help='normalize the data')
     parser.add_argument('--test_ratio', type=float, default=0.1, help='proportion of testing edges')
 
     # model
@@ -23,6 +25,11 @@ def parse_args():
     parser.add_argument('--eta', type=float, default=0.2, help='Learning rate for adjacency matrix.')
     parser.add_argument('--T1', type=int, default=50)
     parser.add_argument('--T2', type=int, default=20)
-    parser.add_argument('--eq', type=bool, default=False, help='Set to True for Oklahoma97 and UNC28')
+    parser.add_argument('--eq', action="store_true", help='Set to true for Oklahoma97 and UNC28')
+
+    # for adversarial
+    parser.add_argument('--epochs', type=int, default=200, help='Number of epochs to train.')
+    parser.add_argument('--alpha', type=float, default=10., help='hyperparameter for adversarial loss')
+    parser.add_argument('--lr_mult', type=float, default=1., help='learning rate multiple for adversarial net')
 
     return parser.parse_args()
